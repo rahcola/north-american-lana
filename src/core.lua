@@ -7,9 +7,9 @@ function object:onpickframe()
 end
 
 function object:oncombatevent(event)
-   Echo("oncombatevent")
+   
 end
 
 function object:onthink(gameVariables)
-   Echo("onthink")
+
 end
