@@ -1,8 +1,18 @@
+local function randomHeroName()
+   local heroNames = dofile("game/bots/mybot/hero_names.lua")
+   local i = math.random(#heroNames)
+   return heroNames[i]
+end
+
 function object:onpickframe()
    if not self:HasSelectedHero() then
-      Echo("Picking Flint")
-      self:SelectHero("Hero_FlintBeastwood")
-      self:Ready()
+      local hero = randomHeroName()
+      Echo("Trying to pick "..hero)
+      self:SelectHero(hero)
+      if self:HasSelectedHero() then
+         Echo("Picked "..hero)
+         self:Ready()
+      end
    end
 end
 
