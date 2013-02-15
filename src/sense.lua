@@ -31,9 +31,9 @@ end
 
 local function clearInvalids(units)
    return util.pfilter(units,
-                       function(_, u)
-                          return u:IsValid()
-                       end)
+                      function(u)
+                         return u:IsValid()
+                      end)
 end
 
 local function isLegion(_, unit)
@@ -42,6 +42,22 @@ end
 
 local function isHellbourne(_, unit)
    return unit:GetTeam() == HoN.GetHellbourneTeam()
+end
+
+local function isAlly(allyTeam)
+   if allyTeam == HoN.GetLegionTeam() then
+      return isLegion
+   else
+      return isHellbourne
+   end
+end
+
+local function isEnemy(allyTeam)
+   if allyTeam == HoN.GetLegionTeam() then
+      return isHellbourne
+   else
+      return isLegion
+   end
 end
 
 local function isTower(_, unit)
@@ -56,27 +72,37 @@ local function isValid(_, unit)
    return unit:IsValid()
 end
 
-local function barracksOfLane(world, lane, team)
+local function idToUnitTable(units)
+   local t = {}
 
+   for _, u in pairs(units) do
+      t[u:GetUniqueID()] = u
+   end
+
+   return t
 end
 
-local function senseWorld(ally)
-   local buildings = pingBuildings()
-   local w = {
-      ally = ally,
-      legionTowers
-         = util.pfilter(buildings, util.pand(isLegion, isTower, isValid)),
-      hellbourneTowers
-         = util.pfilter(buildings, util.pand(isHellbourne, isTower, isValid)),
-      legionRaxes
-         = util.pfilter(buildings, util.pand(isLegion, isRax, isValid)),
-      hellbourneRaxes
-         = util.pfilter(buildings, util.pand(isHellbourne, isRax, isValid))
-   }
+local function refreshWorld(world)
+   local isAlly = isAlly(world.me:GetTeam())
+   local creeps = pingUnits()
 
-   return w
+   world.enemyHeroes = idToUnitTable(util.pfilter(pingHeroes(), isEnemy))
+   world.enemyCreeps = idToUnitTable(util.pfilter(creeps, isEnemy))
+   world.allyCreeps = idToUnitTable(util.pfilter(creeps, isAlly))
+
+   return world
+end
+
+local function new(botBrain)
+   return {
+      me = botBrain:GetHeroUnit()
+      enemyHeroes = {},
+      enemyCreeps = {},
+      allyCreeps = {}
+          }
 end
 
 sense = {
-   senseWorld = senseWorld
+   new = new
+   refreshWorld = refreshWorld
 }

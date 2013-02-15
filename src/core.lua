@@ -26,14 +26,9 @@ end
 function object:oncombatevent(event)
 end
 
-local action = coroutine.wrap(function (_) return true end)
+local world = sense.new(object)
 
 function object:onthink(gameVariables)
-   --local world = sense.senseWorld(self:GetHeroUnit():GetTeam())
-   --local action = think.think(world)
-   local p = Vector3.Create(3500, 3500, 0)
-   draw.arrowFromTo(self:GetHeroUnit():GetPosition(), p, "red")
-   if action(self) then
-      action = act.moveMe(p)
-   end
+   world = sense.refreshWorld(world)
+   plan = planner.plan(world)
 end
