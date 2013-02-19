@@ -12,6 +12,16 @@ local function tableToString(t)
    return s
 end
 
+local function assoc(table, key, value)
+   local new = {}
+   for k, v in pairs(table) do
+      new[k] = v
+   end
+   new[key] = value
+   setmetatable(new, {__newindex = function (_, _, _) error("don't mutate")end})
+   return new
+end
+
 local function pfilter(table, pred)
    local r = {}
    for k, v in pairs(table) do
@@ -19,18 +29,7 @@ local function pfilter(table, pred)
          r[k] = v
       end
    end
-   return r
-end
-
-local function ifilter(table, pred)
-   local r = {}
-   
-   for i, v in ipairs(table) do
-      if pred(i, v) then
-         r[i] = v
-      end
-   end
-
+   setmetatable(r, {__newindex = function (_, _, _) error("don't mutate")end})
    return r
 end
 
@@ -58,24 +57,28 @@ local function zip(iter1, iter2)
    return function(state, index)
       local i1, v1 = iter1[1](state[1], index[1])
       local i2, v2 = iter2[1](state[2], index[2])
+      if (i1 == nil) or (i2 == nil) then
+         return nil
+      end
       return {i1, i2}, {v1, v2}
           end,
    {iter1[2], iter2[2]},
    {iter1[3], iter2[3]}
 end
 
-local function take(n, iter)
+local function take(n, f, s, i)
    local taken = 0
    
-   return function(state, index)
+   return
+   function(state, index)
       if taken >= n then
          return nil
       end
       taken = taken + 1
-      return iter(state[2], index)
-          end,
-   {0, iter[2]}
-   iter[3]
+      return f(s, index)
+   end,
+   {0, s},
+   i
 end
 
 local function pand(...)
@@ -89,13 +92,20 @@ local function pand(...)
    end
 end
 
+local function sharpAngle(p, q)
+   return math.acos(Vector3.Dot(Vector3.Normalize(p),
+                                Vector3.Normalize(q)))
+end
+
 util = {
    tableToString = tableToString,
+   assoc = assoc,
    pfilter = pfilter,
    ifilter = ifilter,
    times = times,
    repeatedly = repeatedly,
    zip = zip,
    take = take,
-   pand = pand
+   pand = pand,
+   sharpAngle = sharpAngle
 }

@@ -1,7 +1,7 @@
 dofile "game/bots/mybot/log.lua"
 dofile "game/bots/mybot/draw.lua"
-dofile "game/bots/mybot/sense.lua"
-dofile "game/bots/mybot/think.lua"
+dofile "game/bots/mybot/world.lua"
+dofile "game/bots/mybot/planner.lua"
 dofile "game/bots/mybot/act.lua"
 
 local function randomHeroName()
@@ -26,9 +26,32 @@ end
 function object:oncombatevent(event)
 end
 
-local world = sense.new(object)
+local w = world.new(object)
+local plan = nil
+local itr = nil
+local s = nil
+local i = nil
+local action = nil
 
 function object:onthink(gameVariables)
-   world = sense.refreshWorld(world)
-   plan = planner.plan(world)
+   w = world.refreshWorld(w)
+   if plan == nil then
+      plan = planner.plan(w)
+      itr, s, i = plan:iterate()
+   end
+
+   if action == nil then
+      i, action = itr(s, i)
+      if action == nil then
+         log.info("plan done")
+         plan = nil
+      else
+         log.info("new step")
+         action.execute(self)
+      end
+   end
+
+   if action and action.isDone(self) then
+      action = nil
+   end
 end
