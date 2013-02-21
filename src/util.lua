@@ -1,15 +1,17 @@
-local function tableToString(t)
-   local s = ""
+local function tableToString(t, i)
+   i = i or 0
+   local indent = string.rep(".", i)
+   local s = indent.."{\n"
 
    for k, v in pairs(t) do
       local vs = tostring(v)
       if type(v) == "table" then
-         vs = tableToString(v)
+         vs = "\n"..tableToString(v, i+1)
       end
-      s = s..tostring(k).." = "..vs.."\n"
+      s = s..indent..tostring(k).." = "..vs.."\n"
    end
 
-   return s
+   return s..indent.."}"
 end
 
 local function assoc(table, key, value)
@@ -18,18 +20,33 @@ local function assoc(table, key, value)
       new[k] = v
    end
    new[key] = value
-   setmetatable(new, {__newindex = function (_, _, _) error("don't mutate")end})
    return new
 end
 
-local function pfilter(table, pred)
+local function updateIn(table, keys, fn)
+   local function r(table, i, k)
+      if i == nil then
+         return table
+      end
+
+      ii, kk = next(keys, i)
+      if ii == nil then
+         return assoc(table, k, fn(table[k]))
+      else
+         return assoc(table, k, r(table[k], ii, kk))
+      end
+   end
+
+   return r(table, next(keys))
+end
+
+local function filter(table, pred)
    local r = {}
    for k, v in pairs(table) do
       if k and v and pred(k, v) then
          r[k] = v
       end
    end
-   setmetatable(r, {__newindex = function (_, _, _) error("don't mutate")end})
    return r
 end
 
@@ -43,42 +60,58 @@ local function times(n, x)
    return t
 end
 
-local function repeatedly(n, f)
+local function repeatedly(n, f, ...)
    local t = {}
 
    for i = 1, n do
-      t[i] = f()
+      t[i] = f(...)
    end
 
    return t
 end
 
-local function zip(iter1, iter2)
-   return function(state, index)
-      local i1, v1 = iter1[1](state[1], index[1])
-      local i2, v2 = iter2[1](state[2], index[2])
-      if (i1 == nil) or (i2 == nil) then
-         return nil
-      end
-      return {i1, i2}, {v1, v2}
-          end,
-   {iter1[2], iter2[2]},
-   {iter1[3], iter2[3]}
+local function zip(table1, table2)
+   local t = {}
+   local i, x = next(table1)
+   local j, y = next(table2)
+
+   while i ~= nil and j ~= nil do
+      table.insert(t, {x, y})
+      i, x = next(table1, i)
+      j, y = next(table2, j)
+   end
+
+   return t
 end
 
-local function take(n, f, s, i)
-   local taken = 0
-   
-   return
-   function(state, index)
-      if taken >= n then
-         return nil
-      end
-      taken = taken + 1
-      return f(s, index)
-   end,
-   {0, s},
-   i
+local function foldl(fn, initial, table)
+   local acc = initial
+   for _, x in pairs(table) do
+      acc = fn(acc, x)
+   end
+   return acc
+end
+
+local function min(table)
+   return foldl(math.min, math.huge, table)
+end
+
+local function max(table)
+   return foldl(math.max, math.huge, table)
+end
+
+local function maximal(table)
+   return foldl(function (state, x)
+                   local max, maximal = unpack(state)
+                   local val, x = unpack(x)
+                   if val > max then
+                      max = val
+                      maximal = x
+                   end
+                   return {max, maximal}
+                end,
+                {-math.huge, nil},
+                table)
 end
 
 local function pand(...)
@@ -97,15 +130,17 @@ local function sharpAngle(p, q)
                                 Vector3.Normalize(q)))
 end
 
-util = {
+return {
    tableToString = tableToString,
    assoc = assoc,
-   pfilter = pfilter,
-   ifilter = ifilter,
+   filter = filter,
    times = times,
    repeatedly = repeatedly,
    zip = zip,
-   take = take,
+   foldl = foldl,
+   min = min,
+   max = max,
+   maximal = maximal,
    pand = pand,
    sharpAngle = sharpAngle
-}
+       }

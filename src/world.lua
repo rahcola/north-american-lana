@@ -1,6 +1,6 @@
-dofile "game/bots/mybot/util.lua"
-dofile "game/bots/mybot/const.lua"
-dofile "game/bots/mybot/hero.lua"
+local util = dofile("game/bots/mybot/util.lua")
+local const = dofile("game/bots/mybot/const.lua")
+local hero = dofile("game/bots/mybot/hero.lua")
 
 local UNIT = 0x0000001
 local BUILDING = 0x0000002
@@ -29,7 +29,7 @@ local function pingHeroes()
 end
 
 local function clearInvalids(units)
-   return util.pfilter(units,
+   return util.filter(units,
                       function(u)
                          return u:IsValid()
                       end)
@@ -81,9 +81,9 @@ local function idToUnitTable(units)
    return t
 end
 
-local function isImpassable(p)
-   local b = HoN.GetUnitsInRadius(p, 30, ALIVE + BUILDING)
-   local t = HoN.GetTreesInRadius(p, 30)
+local function impassable(p)
+   local b = HoN.GetUnitsInRadius(p, 100, ALIVE + BUILDING)
+   local t = HoN.GetTreesInRadius(p, 100)
    return next(b) or next(t)
 end
 
@@ -102,9 +102,14 @@ local function refreshWorld(world)
                       "allyCreeps",
                       idToUnitTable(util.pfilter(creeps, isAlly)))
       --]]
-                      world = util.assoc(world, "matchTime", HoN.GetMatchTime())
-   return util.assoc(world, "me",
-                     util.assoc(world.me, "position", world.me.unit:GetPosition()))
+
+   world = util.assoc(world, "matchTime", HoN.GetMatchTime())
+   world = util.updateIn(world,
+                         {"me", "position"},
+                         function ()
+                            return world.me:GetPosition()
+                         end)
+   return world
 end
 
 local function new(botBrain)
@@ -115,12 +120,12 @@ local function new(botBrain)
       enemyCreeps = {},
       allyCreeps = {}
           }
-   setmetatable(w, {__newindex = function (_, _, _) error("don't mutate")end})
+
    return w
 end
 
-world = {
+return {
    new = new,
    refreshWorld = refreshWorld,
-   isImpassable = isImpassable
-}
+   impassable = impassable
+       }

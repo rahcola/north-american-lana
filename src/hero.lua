@@ -1,10 +1,13 @@
 local function new(unit)
-   return {
+   local o = {
       unit = unit,
       position = unit:GetPosition()
-          }
+   }
+   setmetatable(o, {__index = unit})
+   
+   return o
 end
 
-hero = {
+return {
    new = new
-}
+       }

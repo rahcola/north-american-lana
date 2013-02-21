@@ -1,8 +1,8 @@
-dofile "game/bots/mybot/log.lua"
-dofile "game/bots/mybot/draw.lua"
-dofile "game/bots/mybot/world.lua"
-dofile "game/bots/mybot/planner.lua"
-dofile "game/bots/mybot/act.lua"
+local log = dofile("game/bots/mybot/log.lua")
+local draw = dofile("game/bots/mybot/draw.lua")
+local world = dofile("game/bots/mybot/world.lua")
+local planner = dofile("game/bots/mybot/planner.lua")
+local act = dofile("game/bots/mybot/act.lua")
 
 local function randomHeroName()
    local heroNames = dofile("game/bots/mybot/hero_names.lua")
@@ -28,8 +28,6 @@ end
 
 local w = world.new(object)
 local plan = nil
-local itr = nil
-local s = nil
 local i = nil
 local action = nil
 
@@ -37,21 +35,20 @@ function object:onthink(gameVariables)
    w = world.refreshWorld(w)
    if plan == nil then
       plan = planner.plan(w)
-      itr, s, i = plan:iterate()
    end
 
    if action == nil then
-      i, action = itr(s, i)
-      if action == nil then
+      i, action = next(plan, i)
+      if i == nil then
          log.info("plan done")
          plan = nil
-      else
-         log.info("new step")
-         action.execute(self)
+         return
       end
+      log.info("new step")
    end
 
-   if action and action.isDone(self) then
+   if action.enumerator then
       action = nil
+      return
    end
 end

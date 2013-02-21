@@ -2,6 +2,6 @@ local function info(msg)
    Echo(msg)
 end
 
-log = {
+return {
    info = info
-}
+       }

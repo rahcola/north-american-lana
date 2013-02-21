@@ -1,99 +1,62 @@
-dofile "game/bots/mybot/util.lua"
-dofile "game/bots/mybot/world.lua"
+local world = dofile("game/bots/mybot/world.lua")
+local act = dofile("game/bots/mybot/act.lua")
+local util = dofile("game/bots/mybot/util.lua")
 
 local function randomStep(state)
-   local distance = math.random(101, 500)
-   local angle = math.random(0,2*math.pi)
-   local p = distance * Vector3.Create(math.sin(angle), math.cos(angle))
-   if world.isImpassable(p) then
-      p = Vector3.Create(0, 0)
+   local distance = math.random(150, 500)
+   local angle = math.random(0,7) * math.pi / 4
+   local displacement = distance * Vector3.Create(math.sin(angle),
+                                                  math.cos(angle))
+   local p = state.me.position + displacement
+   if world.impassable(p) then
+      p = state.me.position
    end
-   return act.moveAlong(state.me.unit, p)
+   return act.move(state.me.unit, p)
 end
 
-local function randomPlan(state)
-   return {
-      isPlan = true,
-      steps = {},
-      iterate = function (self)
-         return self.iterator, self, 1
-      end,
-      iterator = function (self, index)
-         if index > 5 then
-            return nil
-         end
-
-         self.steps[index] = self.steps[index] or randomStep(state)
-         return index + 1, self.steps[index]
-      end
-          }
-end
-
-local function simulateStep(state, step, enemyStep)
-   local i = math.random()
-
-   if i < 0.5 then
-      state = step.simulateExecute(state)
-      state = enemyStep.simulateExecute(state)
-   else
-      state = enemyStep.simulateExecute(state)
-      state = step.simulateExecute(state)
-   end
-
-   return state
-end
-
-local function simulatePlan(state, myPlan, enemyPlan, maxDepth)
-   for _, steps in util.take(maxDepth,
-                             util.zip({myPlan:iterate()},
-                                      {enemyPlan:iterate()})) do
-      state = simulateStep(state, steps[1], steps[2])
-   end
-
-   return state
+local function randomPlan(state, length)
+   return util.repeatedly(length, randomStep, state)
 end
 
 local function evaluateState(state)
    local target = Vector3.Create(1500, 1500)
    local fromTarget = Vector3.Distance2D(state.me.position, target)
-   --local fitness = 1 / ((0.099 * fromTarget) + 1)
-   local fitness = (-fromTarget/20000) + 1
-   Echo("from target "..tostring(fromTarget))
-   Echo("fitness "..tostring(fitness))
+   local fitness = 1 / ((0.099 * fromTarget) + 1)
+   --local fitness = (-fromTarget/20000) + 1
+
    return fitness
 end
 
-local function evaluatePlan(state, plan, simulations, maxDepth)
-   local s = function()
-      local enemyPlan = randomPlan(state)
-      return evaluateState(simulatePlan(state, plan, enemyPlan, maxDepth))
-   end
-
-   return math.min(unpack(util.repeatedly(simulations, s)))
+local function simulatePlan(state, plan, maxDepth)
+   return util.foldl(function (state, step)
+                        return step:simulate(state)
+                     end,
+                     state,
+                     util.take(maxDepth, plan))
 end
 
-local function plan(world)
-   local plans = 200
+local function evaluatePlan(state, plan, simulations, maxDepth)
+   local p = function()
+      return evaluateState(simulatePlan(state, plan, maxDepth))
+   end
+
+   return util.min(util.repeatedly(simulations, p))
+end
+
+local function plan(state)
+   local plans = 100
+   local planLength = 5
    local simulations = 1
    local maxDepth = 10
 
-   local maxScore = -math.huge
-   local bestPlan = nil
-   for i = 1, plans do
-      local plan = randomPlan(world)
-      local score = evaluatePlan(world,
-                                 plan,
-                                 simulations,
-                                 maxDepth)
-      if score > maxScore then
-         maxScore = score
-         bestPlan = plan
-      end
+   local p = function ()
+      local plan = randomPlan(state, planLength)
+      return {evaluatePlan(state, plan, simulations, maxDepth), plan}
    end
-   
+   local _, bestPlan = unpack(util.maximal(util.repeatedly(plans, p)))
    return bestPlan
 end
 
-planner = {
+return {
    plan = plan
-}
+       }

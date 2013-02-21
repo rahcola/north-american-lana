@@ -12,7 +12,7 @@ local function arrowFromTo(p, q, color)
    HoN.DrawDebugLine(p, q, true, color)
 end
 
-draw = {
+return {
    mark = mark,
    arrowFromTo = arrowFromTo
-}
+       }
